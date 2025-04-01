@@ -2,4 +2,70 @@
 title: "Datacleaning"
 output: html_document
 ---
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(forecast)
+library(lubridate)
+library(ggplot2)
+load_data <- read_excel("datasets/load.xlsx")
+humidity_data <- read_excel("datasets/relative_humidity.xlsx")
+temperature_data <- read_excel("datasets/temperature.xlsx")
+```
+
+```{r}
+
+load_daily <- load_data %>%
+  rowwise() %>%
+  mutate(Daily_Load = mean(c_across(h1:h24), na.rm = TRUE)) %>%
+  select(date, Daily_Load)
+
+humidity_daily <- humidity_data %>%
+  group_by(date) %>%
+  summarize(Daily_Humidity = mean(c_across(starts_with("rh_ws")), na.rm = TRUE))
+
+temperature_daily <- temperature_data %>%
+  group_by(date) %>%
+  summarize(Daily_Temperature = mean(c_across(starts_with("t_ws")), na.rm = TRUE))
+
+daily_data <- load_daily %>%
+  left_join(humidity_daily, by = "date") %>%
+  left_join(temperature_daily, by = "date")
+
+
+```
+
+
+```{r}
+
+daily_ts <- msts(daily_data$Daily_Load, seasonal.periods = c(7, 365), start = c(2005, 1))
+autoplot(daily_ts) + ggtitle("Daily Load Time Series")
+
+```
+
+```{r}
+arima_model <- auto.arima(daily_ts[1:(5 * 365)], seasonal = TRUE)
+arima_forecast <- forecast(arima_model, h = 59)
+
+
+```
+
+```{r}
+ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
+ets_forecast <- forecast(ets_model, h = 59)
+
+tbats_model <- tbats(daily_ts[1:(5 * 365)])
+tbats_forecast <- forecast(tbats_model, h = 59)
+
+```
+
+```{r}
+actual <- daily_ts[(5 * 365 + 1):(5 * 365 + 59)]  # Actual values for validation period
+
+mape_ets <- mean(abs((actual - ets_forecast$mean) / actual)) * 100
+mape_tbats <- mean(abs((actual - tbats_forecast$mean) / actual)) * 100
+mape_arima <- mean(abs((actual - arima_forecast$mean) / actual)) * 100
+
+```
 
