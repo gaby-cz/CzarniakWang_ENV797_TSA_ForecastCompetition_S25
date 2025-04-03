@@ -15,6 +15,8 @@ library(tidyr)
 library(forecast)
 library(lubridate)
 library(ggplot2)
+library(zoo)
+library(cowplot)
 
 ```
 
@@ -30,18 +32,46 @@ head(load_data)
 head(humidity_data)
 head(temperature_data)
 
+```
+
+```{r Handling missing values}
+
+
+summary(load_data)
+# We have 6 NAs in h2
+
+summary(humidity_data)
+# No NAs in humidity data
+
+summary(temperature_data)
+# No NAs in temperature data
+
+# Identify NAs in load data
+NAs <- load_data %>% 
+  filter(is.na(load_data$h2) == TRUE)
+NAs
+# 5 of the NAs are between 2005-2010
+
 # Getting number of variables and observations for load
 nvar <- ncol(load_data) - 1
 nobs <- nrow(load_data)
-```
 
+# Interpolate missing values for load
+load_data <- load_data %>%
+        mutate(h2 = na.approx(h2))
+
+NAcheck <- load_data %>% 
+  filter(is.na(load_data$h2) == TRUE)
+NAcheck
+
+```
 
 ```{r Process the data}
 
 # Take the mean load from h1 through h24 for each day
 load_daily <- load_data %>%
   rowwise() %>%
-  mutate(Daily_Load = mean(c_across(h1:h24), na.rm = TRUE)) %>%
+  mutate(Daily_Load = mean(c_across(h1:h24))) %>%
   select(date, Daily_Load)
 
 # Take the daily averages of humidity data across sensors
@@ -76,13 +106,11 @@ autoplot(daily_ts) + ggtitle("Daily Load Time Series")
 
 ```
 
-```{r Attempting first model}
+```{r Decompose the series}
 
-arima_model <- auto.arima(daily_ts[1:(5 * 365)], seasonal = TRUE)
-arima_model
-
-arima_forecast <- forecast(arima_model, h = 59)
-arima_forecast
+# Gaby added in case we need
+decompose_load <- decompose(daily_ts, "multiplicative")
+plot(decompose_load)
 
 ```
 
@@ -90,7 +118,7 @@ arima_forecast
 
 # Subset for training
 # For model training, use data from January 1, 2005, to December 31, 2009.
-n_for = 365*2
+n_for = 365
 
 daily_ts_train <- subset(daily_ts,
                          end = length(daily_ts) - n_for)
@@ -104,6 +132,60 @@ autoplot(daily_ts_test) + ggtitle("Testing subset")
 # To evaluate model performance, use the fitted models to forecast daily demand for January 1, 2010, to February 28, 2010, as a validation set.
 
 ```
+
+```{r Arithmetic mean on original data}
+
+# Train on January 1, 2005, to December 31, 2009.
+MEAN_seas_load_train <- meanf(y = daily_ts_train, h = 59)
+plot(MEAN_seas_load)
+
+# After selecting the best-performing model(s), re-train the model using the full dataset from January 1, 2005, to December 31, 2010. Use this updated model to generate forecasts for January 1, 2011, to February 28, 2011. The final forecasts will be submitted as part of the competition.
+MEAN_seas_load_forecast <- meanf(y = daily_ts, h = 59)
+plot(MEAN_seas_load)
+
+```
+
+```{r}
+
+```
+
+
+
+
+```{r ARIMA - Weilin}
+
+arima_model <- auto.arima(daily_ts[1:(5 * 365)], seasonal = TRUE)
+arima_model
+
+arima_forecast <- forecast(arima_model, h = 59)
+arima_forecast
+
+```
+
+```{r SARIMA autofit for load only}
+
+# Gaby added
+# Simple SARIMA autofit on original series
+
+SARIMA_autofit <- auto.arima(daily_ts[1:(5 * 365)])
+print(SARIMA_autofit)
+
+plot_grid(
+  autoplot(SARIMA_autofit$residuals),
+  autoplot(Acf(SARIMA_autofit$residuals,
+                lag.max = 40,
+                plot = FALSE),
+           main = ""),
+  autoplot(Pacf(SARIMA_autofit$residuals,
+                lag.max = 40,
+                plot = FALSE),
+           main = ""),
+  nrow = 1,
+  ncol = 3
+)
+
+```
+
 
 ```{r ETS}
 
