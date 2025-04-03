@@ -8,6 +8,7 @@ editor_options:
   chunk_output_type: console
 ---
 ```{r Loading libraries}
+
 library(readxl)
 library(dplyr)
 library(tidyr)
@@ -19,10 +20,19 @@ library(ggplot2)
 
 ```{r Importing data}
 
+# Importing time series data from Excel files
 load_data <- read_excel("datasets/load.xlsx")
 humidity_data <- read_excel("datasets/relative_humidity.xlsx")
 temperature_data <- read_excel("datasets/temperature.xlsx")
 
+# Inspecting the data
+head(load_data)
+head(humidity_data)
+head(temperature_data)
+
+# Getting number of variables and observations for load
+nvar <- ncol(load_data) - 1
+nobs <- nrow(load_data)
 ```
 
 
@@ -128,18 +138,18 @@ ARIMA_Four_fit <- auto.arima(daily_ts_train,
                                             # two pairs for peak and off-peak within the day
                                             # 12 for a diff level for each month of the year
                                             # the higher the K, the longer it takes to converge (more terms)
-                                            K = c(2, 2)))
+                                            K = c(2, 24)))
 
 # RStudio container crashed with K = c(2,12) and could not complete
 # RStudio container crashed with K = c(2,4) and could not complete
 # RStudio container crashed with K = c(2,2) and could not complete
+# RStudio container crashed with K = c(2,24) and could not complete
 
 ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
                                 xreg = fourier(daily_ts_train,
                                                K = c(2,4),
                                                h = 365),
                                 h = 365)
-
 ```
 
 ```{r}
