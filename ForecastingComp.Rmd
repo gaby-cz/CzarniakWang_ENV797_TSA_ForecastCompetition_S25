@@ -76,17 +76,69 @@ arima_forecast
 
 ```
 
+```{r Create subsets for training and testing purposes}
 
-```{r Train model}
-
+# Subset for training
 # For model training, use data from January 1, 2005, to December 31, 2009.
+n_for = 365*2
+
+daily_ts_train <- subset(daily_ts,
+                         end = length(daily_ts) - n_for)
+autoplot(daily_ts_train) + ggtitle("Training subset")
+
+# Subset for testing -- can delete if we don't end up needing
+daily_ts_test <- subset(daily_ts,
+                        start = length(daily_ts) - n_for)
+autoplot(daily_ts_test) + ggtitle("Testing subset")
+
+# To evaluate model performance, use the fitted models to forecast daily demand for January 1, 2010, to February 28, 2010, as a validation set.
+
+```
+
+```{r ETS}
+
 ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
 ets_forecast <- forecast(ets_model, h = 59)
+
+```
+
+```{r TBATS}
 
 tbats_model <- tbats(daily_ts[1:(5 * 365)])
 tbats_forecast <- forecast(tbats_model, h = 59)
 
-# To evaluate model performance, use the fitted models to forecast daily demand for January 1, 2010, to February 28, 2010, as a validation set.
+```
+
+```{r ARIMA with Fourier terms}
+
+# Fourier terms as exogenous regressors
+# Fourier terms are ideal for complex seasonalities, like in the load data (both daily and hourly variation)
+# P, D, and Q are 0 because seasonality will be expressed in the Fourier terms
+
+ARIMA_Four_fit <- auto.arima(daily_ts_train,
+                             seasonal = FALSE,
+                             # use log transformation to avoid negative values in forecast
+                             lambda = 0,
+                             # xreg is when you want to add vars to ARIMA that 
+                             # aren't prev obs or prev errors
+                             # examples could be humidity and temperature data
+                             # will be added with a multiplying coeff
+                             xreg = fourier(daily_ts_train,
+                                            # K is the pairs of sine and cosine terms
+                                            # two pairs for peak and off-peak within the day
+                                            # 12 for a diff level for each month of the year
+                                            # the higher the K, the longer it takes to converge (more terms)
+                                            K = c(2, 2)))
+
+# RStudio container crashed with K = c(2,12) and could not complete
+# RStudio container crashed with K = c(2,4) and could not complete
+# RStudio container crashed with K = c(2,2) and could not complete
+
+ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
+                                xreg = fourier(daily_ts_train,
+                                               K = c(2,4),
+                                               h = 365),
+                                h = 365)
 
 ```
 
