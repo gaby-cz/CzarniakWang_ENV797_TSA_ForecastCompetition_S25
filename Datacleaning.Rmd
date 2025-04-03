@@ -1,62 +1,92 @@
 ---
-title: "Datacleaning"
-output: html_document
+title: "Forecasting Competition"
+subtitle: "Assignment A08"
+author: "Gaby Czarniak & Weilin Wang"
+output: pdf_document
+geometry: margin=2.54cm
+editor_options: 
+  chunk_output_type: console
 ---
-```{r}
+```{r Loading libraries}
 library(readxl)
 library(dplyr)
 library(tidyr)
 library(forecast)
 library(lubridate)
 library(ggplot2)
+
+```
+
+```{r Importing data}
+
 load_data <- read_excel("datasets/load.xlsx")
 humidity_data <- read_excel("datasets/relative_humidity.xlsx")
 temperature_data <- read_excel("datasets/temperature.xlsx")
+
 ```
 
-```{r}
 
+```{r Process the data}
+
+# Take the mean load from h1 through h24 for each day
 load_daily <- load_data %>%
   rowwise() %>%
   mutate(Daily_Load = mean(c_across(h1:h24), na.rm = TRUE)) %>%
   select(date, Daily_Load)
 
+# Take the daily averages of humidity data across sensors
 humidity_daily <- humidity_data %>%
   group_by(date) %>%
   summarize(Daily_Humidity = mean(c_across(starts_with("rh_ws")), na.rm = TRUE))
 
+# Take the daily averages of temperature data across sensors
 temperature_daily <- temperature_data %>%
   group_by(date) %>%
   summarize(Daily_Temperature = mean(c_across(starts_with("t_ws")), na.rm = TRUE))
 
+# Join load, humidity, and temperature variables into one data frame
 daily_data <- load_daily %>%
   left_join(humidity_daily, by = "date") %>%
   left_join(temperature_daily, by = "date")
 
-
 ```
 
 
-```{r}
+```{r Creating our first ts object}
 
-daily_ts <- msts(daily_data$Daily_Load, seasonal.periods = c(7, 365), start = c(2005, 1))
+# Creating our first ts object
+# Using msts because our daily data has more than one seasonal component
+daily_ts <- msts(daily_data$Daily_Load, 
+                 seasonal.periods = c(7, 365), 
+                 # start year, month, day
+                 start = c(2005, 1, 1))
+
+# Inspect the ts plot
 autoplot(daily_ts) + ggtitle("Daily Load Time Series")
 
 ```
 
-```{r}
-arima_model <- auto.arima(daily_ts[1:(5 * 365)], seasonal = TRUE)
-arima_forecast <- forecast(arima_model, h = 59)
+```{r Attempting first model}
 
+arima_model <- auto.arima(daily_ts[1:(5 * 365)], seasonal = TRUE)
+arima_model
+
+arima_forecast <- forecast(arima_model, h = 59)
+arima_forecast
 
 ```
 
-```{r}
+
+```{r Train model}
+
+# For model training, use data from January 1, 2005, to December 31, 2009.
 ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
 ets_forecast <- forecast(ets_model, h = 59)
 
 tbats_model <- tbats(daily_ts[1:(5 * 365)])
 tbats_forecast <- forecast(tbats_model, h = 59)
+
+# To evaluate model performance, use the fitted models to forecast daily demand for January 1, 2010, to February 28, 2010, as a validation set.
 
 ```
 
