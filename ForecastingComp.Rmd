@@ -17,7 +17,11 @@ library(lubridate)
 library(ggplot2)
 library(zoo)
 library(cowplot)
-
+library(Kendall)
+library(tseries)
+library(outliers)
+library(tidyverse)
+library(smooth)
 ```
 
 ```{r Importing data}
@@ -36,6 +40,7 @@ head(temperature_data)
 
 ```{r Handling missing values}
 
+# Gaby added
 
 summary(load_data)
 # We have 6 NAs in h2
@@ -116,6 +121,7 @@ plot(decompose_load)
 
 ```{r Create subsets for training and testing purposes}
 
+# Gaby added
 # Subset for training
 # For model training, use data from January 1, 2005, to December 31, 2009.
 n_for = 365
@@ -135,6 +141,7 @@ autoplot(daily_ts_test) + ggtitle("Testing subset")
 
 ```{r Arithmetic mean on original data}
 
+# Gaby added
 # Train on January 1, 2005, to December 31, 2009.
 MEAN_seas_load_train <- meanf(y = daily_ts_train, h = 59)
 plot(MEAN_seas_load)
@@ -145,10 +152,35 @@ plot(MEAN_seas_load)
 
 ```
 
-```{r}
+```{r Seasonal naive on original data}
+
+# Gaby added
+# Seasonal naive on original data
+
+SNAIVE_seas_train <- snaive(daily_ts_train, h=59)
+plot(SNAIVE_seas_train)
+
+SNAIVE_seas_forecast <- snaive(daily_ts, h=59)
+plot(SNAIVE_seas_forecast)
 
 ```
 
+```{r Simple moving average on original data}
+
+# Gaby added
+# Simple moving average on original data
+
+SMA_seas_fit_train <- sma(y = daily_ts_train, h = 59, 
+                          holdout = FALSE, 
+                          silent = FALSE)
+summary(SMA_seas_fit_train)
+
+SMA_seas_fit_forecast <- sma(y = daily_ts, h = 59, 
+                          holdout = FALSE, 
+                          silent = FALSE)
+SMA_seas_fit_forecast_summary <- summary(SMA_seas_fit_forecast)
+
+```
 
 
 
