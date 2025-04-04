@@ -163,6 +163,7 @@ plot(SNAIVE_seas_train)
 SNAIVE_seas_forecast <- snaive(daily_ts, h=59)
 plot(SNAIVE_seas_forecast)
 
+write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
 ```
 
 ```{r Simple moving average on original data}
