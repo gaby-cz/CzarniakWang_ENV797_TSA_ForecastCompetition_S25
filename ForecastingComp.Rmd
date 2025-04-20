@@ -98,7 +98,6 @@ daily_data <- load_daily %>%
 
 
 ```{r Creating our first ts object}
-
 # Creating our first ts object
 # Using msts because our daily data has more than one seasonal component
 daily_ts <- msts(daily_data$Daily_Load, 
@@ -139,16 +138,17 @@ autoplot(daily_ts_test) + ggtitle("Testing subset")
 
 ```
 
+
 ```{r Arithmetic mean on original data}
 
 # Gaby added
 # Train on January 1, 2005, to December 31, 2009.
 MEAN_seas_load_train <- meanf(y = daily_ts_train, h = 59)
-plot(MEAN_seas_load)
+plot(MEAN_seas_load_train)
 
 # After selecting the best-performing model(s), re-train the model using the full dataset from January 1, 2005, to December 31, 2010. Use this updated model to generate forecasts for January 1, 2011, to February 28, 2011. The final forecasts will be submitted as part of the competition.
 MEAN_seas_load_forecast <- meanf(y = daily_ts, h = 59)
-plot(MEAN_seas_load)
+plot(MEAN_seas_load_forecast)
 
 ```
 
@@ -240,39 +240,56 @@ tbats_forecast <- forecast(tbats_model, h = 59)
 # Fourier terms are ideal for complex seasonalities, like in the load data (both daily and hourly variation)
 # P, D, and Q are 0 because seasonality will be expressed in the Fourier terms
 
+# First, store the Fourier terms K values consistently
+K_values <- c(2, 4)  # Using the same values you tried
+
+# Fit the model with these K values
 ARIMA_Four_fit <- auto.arima(daily_ts_train,
-                             seasonal = FALSE,
-                             # use log transformation to avoid negative values in forecast
-                             lambda = 0,
-                             # xreg is when you want to add vars to ARIMA that 
-                             # aren't prev obs or prev errors
-                             # examples could be humidity and temperature data
-                             # will be added with a multiplying coeff
-                             xreg = fourier(daily_ts_train,
-                                            # K is the pairs of sine and cosine terms
-                                            # two pairs for peak and off-peak within the day
-                                            # 12 for a diff level for each month of the year
-                                            # the higher the K, the longer it takes to converge (more terms)
-                                            K = c(2, 24)))
+                           seasonal = FALSE,
+                           lambda = 0,
+                           xreg = fourier(daily_ts_train, K = K_values))
 
-# RStudio container crashed with K = c(2,12) and could not complete
-# RStudio container crashed with K = c(2,4) and could not complete
-# RStudio container crashed with K = c(2,2) and could not complete
-# RStudio container crashed with K = c(2,24) and could not complete
+# Create Fourier terms for forecasting with the same K values
+fourier_terms <- fourier(daily_ts_train, K = K_values, h = 59)
 
+# Generate forecast using the model
 ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
-                                xreg = fourier(daily_ts_train,
-                                               K = c(2,4),
-                                               h = 365),
-                                h = 365)
+                              xreg = fourier_terms,
+                              h = 59)  # 59 days
 ```
 
-```{r}
-actual <- daily_ts[(5 * 365 + 1):(5 * 365 + 59)]  # Actual values for validation period
 
+```{r}
+# 1. Calculate MAPE for all models on the validation period
+actual <- daily_ts[(5 * 365 + 1):(5 * 365 + 59)]
+
+mape_snaive <- mean(abs((actual - SNAIVE_seas_train$mean) / actual)) * 100
+mape_sma <- mean(abs((actual - SMA_seas_fit_train$mean) / actual)) * 100
+mape_arima <- mean(abs((actual - arima_forecast$mean) / actual)) * 100
 mape_ets <- mean(abs((actual - ets_forecast$mean) / actual)) * 100
 mape_tbats <- mean(abs((actual - tbats_forecast$mean) / actual)) * 100
-mape_arima <- mean(abs((actual - arima_forecast$mean) / actual)) * 100
+
+mape_results <- data.frame(
+  Model = c("Seasonal Naive", "Simple Moving Average", "ARIMA", "ETS", "TBATS"),
+  MAPE = c(mape_snaive, mape_sma, mape_arima, mape_ets, mape_tbats)
+)
+
+mape_results <- mape_results[order(mape_results$MAPE), ]
+print(mape_results)
+
+# 2. Train the best model on the full dataset and generate forecasts
+best_model <- tbats(daily_ts)
+best_forecast <- forecast(best_model, h = 59)
+
+# 3. Format for submission
+submission_df <- data.frame(
+  date = format(seq.Date(from = as.Date("2011-01-01"), 
+                   by = "day", 
+                   length.out = 59), "%Y-%m-%d"),
+  load = round(best_forecast$mean)
+)
+
+write.csv(submission_df, "final_submission.csv", row.names = FALSE)
 
 ```
 
