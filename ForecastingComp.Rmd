@@ -235,7 +235,7 @@ tbats_forecast <- forecast(tbats_model, h = 59)
 ```
 
 ```{r ARIMA with Fourier terms}
-
+# Weilin_add
 # Fourier terms as exogenous regressors
 # Fourier terms are ideal for complex seasonalities, like in the load data (both daily and hourly variation)
 # P, D, and Q are 0 because seasonality will be expressed in the Fourier terms
@@ -260,6 +260,7 @@ ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
 
 
 ```{r}
+#Weilin add
 # 1. Calculate MAPE for all models on the validation period
 actual <- daily_ts[(5 * 365 + 1):(5 * 365 + 59)]
 
@@ -292,4 +293,3 @@ submission_df <- data.frame(
 write.csv(submission_df, "final_submission.csv", row.names = FALSE)
 
 ```
-
