@@ -138,7 +138,6 @@ autoplot(daily_ts_test) + ggtitle("Testing subset")
 
 ```
 
-
 ```{r Arithmetic mean on original data}
 
 # Gaby added
@@ -173,21 +172,28 @@ write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
 
 SMA_seas_fit_train <- sma(y = daily_ts_train, h = 59, 
                           holdout = FALSE, 
-                          silent = FALSE)
+                          silent = c("all"))
 summary(SMA_seas_fit_train)
 
 SMA_seas_fit_forecast <- sma(y = daily_ts, h = 59, 
                           holdout = FALSE, 
                           silent = FALSE)
+plot(SMA_seas_fit_forecast)
 SMA_seas_fit_forecast_summary <- summary(SMA_seas_fit_forecast)
+
+write.csv(SMA_seas_fit_forecast, "SMA_seas_fit_1_T1.csv")
 
 ```
 
+```{r}
+## Could add an exponential smoothing with ses(), arithmetic mean with meanf(), and could experiment with non-seasonal naive on the deseasoned series with naive()
+```
 
 
 ```{r ARIMA - Weilin}
+# Hi Weilin! Since we have a SARIMA, I'm going to run this ARIMA with seasonal = FALSE because otherwise we try the same thing twice. We can use the nonseasonal ARIMA on deseasoned and then add in a model of just the seasonal component and see how it works.
 
-arima_model <- auto.arima(daily_ts[1:(5 * 365)], seasonal = TRUE)
+arima_model <- auto.arima(decompose_load, seasonal = FALSE)
 arima_model
 
 arima_forecast <- forecast(arima_model, h = 59)
@@ -217,13 +223,25 @@ plot_grid(
   ncol = 3
 )
 
+SARIMA_forecast <- forecast(SARIMA_autofit, h = 59)
+print(SARIMA_forecast)
+
+write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv")
+
 ```
 
 
-```{r ETS}
+```{r ETS + STL}
+
+## Hi Weilin! I think this ETS needed to be applied to the deseasoned series. That's why it's performing so poorly I think. Then, we add the seasonal component forecast back in to get the final forecast. I am going to go ahead and make those changes.
 
 ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
 ets_forecast <- forecast(ets_model, h = 59)
+
+write.csv(ets_forecast, "ETS_forecast_1_T1.csv")
+
+## Only STL -- Gaby added
+stl_model <- stl(daily_ts[1:(5 * 365)])
 
 ```
 
