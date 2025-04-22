@@ -226,7 +226,7 @@ plot_grid(
 SARIMA_forecast <- forecast(SARIMA_autofit, h = 59)
 print(SARIMA_forecast)
 
-write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv")
+write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv") ## This model got a public score of 22.29 -- KEEP
 
 ```
 
@@ -235,13 +235,25 @@ write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv")
 
 ## Hi Weilin! I think this ETS needed to be applied to the deseasoned series. That's why it's performing so poorly I think. Then, we add the seasonal component forecast back in to get the final forecast. I am going to go ahead and make those changes.
 
+# Fit and forecast STL + ETS model to data -- Gaby added
+ETS_fit <- stlf(daily_ts_train, h = 59)
+
+# Plot forecasting results -- Gaby added
+autoplot(ETS_fit) + ylab("Load")
+
+# Plot model + observed data -- Gaby added
+autoplot(daily_ts) +
+  autolayer(ETS_fit, series = "STL + ETS", PI = FALSE) +
+  ylab("Load")
+
+write.csv(ETS_fit, "ETSSTL_forecast_1_T1.csv") ## This model got a public score of 37.72 -- DROP
+
+# ------------------------------
+
 ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
 ets_forecast <- forecast(ets_model, h = 59)
 
-write.csv(ets_forecast, "ETS_forecast_1_T1.csv")
-
-## Only STL -- Gaby added
-stl_model <- stl(daily_ts[1:(5 * 365)])
+write.csv(ets_forecast, "ETS_forecast_1_T1.csv") ## This model got a public score of 83.96 -- DROP
 
 ```
 
