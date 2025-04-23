@@ -7,6 +7,7 @@ geometry: margin=2.54cm
 editor_options: 
   chunk_output_type: console
 ---
+
 ```{r Loading libraries}
 
 library(readxl)
@@ -95,6 +96,31 @@ daily_data <- load_daily %>%
   left_join(temperature_daily, by = "date")
 
 ```
+
+```{r Inspect summary statistics for load, humidity, and temperature}
+
+head(daily_data)
+
+summary(daily_data$Daily_Load)
+
+summary(daily_data$Daily_Humidity)
+
+summary(daily_data$Daily_Temperature)
+
+# It doesn't look like we need to log-transform any variables before calculating correlation
+
+# Create one ts object for all columns
+all_ts <- msts(daily_data[,2:4], 
+             seasonal.periods = c(7, 365), 
+             start = c(2005, 1, 1))
+
+# Calculate correlation matrix R and Cholesky decomposition R
+R = cor(all_ts)
+print(R)
+
+# Temperature and humidity are fairly correlated, at R = 0.38. Load and temperature are negatively correlated, albeit more weakly, at R = -0.26. Load and humidity are more weakly correlated at R = -0.19. 
+```
+
 
 
 ```{r Creating our first ts object}
