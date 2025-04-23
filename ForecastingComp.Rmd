@@ -99,6 +99,7 @@ daily_data <- load_daily %>%
 
 ```{r Inspect summary statistics for load, humidity, and temperature}
 
+# Gaby added
 head(daily_data)
 
 summary(daily_data$Daily_Load)
@@ -109,21 +110,26 @@ summary(daily_data$Daily_Temperature)
 
 # It doesn't look like we need to log-transform any variables before calculating correlation
 
+```
+
+```{r Inspect correlation among variables}
+
+# Gaby added
 # Create one ts object for all columns
 all_ts <- msts(daily_data[,2:4], 
              seasonal.periods = c(7, 365), 
              start = c(2005, 1, 1))
+plot(all_ts)
 
 # Calculate correlation matrix R and Cholesky decomposition R
 R = cor(all_ts)
 print(R)
 
 # Temperature and humidity are fairly correlated, at R = 0.38. Load and temperature are negatively correlated, albeit more weakly, at R = -0.26. Load and humidity are more weakly correlated at R = -0.19. 
+
 ```
 
-
-
-```{r Creating our first ts object}
+```{r Creating a load-only ts object}
 # Creating our first ts object
 # Using msts because our daily data has more than one seasonal component
 daily_ts <- msts(daily_data$Daily_Load, 
@@ -189,6 +195,7 @@ SNAIVE_seas_forecast <- snaive(daily_ts, h=59)
 plot(SNAIVE_seas_forecast)
 
 write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
+
 ```
 
 ```{r Simple moving average on original data}
@@ -197,21 +204,21 @@ write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
 # Simple moving average on original data
 
 SMA_seas_fit_train <- sma(y = daily_ts_train, h = 59, 
-                          holdout = FALSE, 
-                          silent = c("all"))
+                          holdout = FALSE) # silent = FALSE gives an error
 summary(SMA_seas_fit_train)
 
-SMA_seas_fit_forecast <- sma(y = daily_ts, h = 59, 
-                          holdout = FALSE, 
-                          silent = FALSE)
-plot(SMA_seas_fit_forecast)
+SMA_seas_fit <- sma(y = daily_ts, h = 59, 
+                          holdout = FALSE) # silent = FALSE gives an error
+
+SMA_seas_fit_forecast <- forecast(object = SMA_seas_fit, h = 59)
+
 SMA_seas_fit_forecast_summary <- summary(SMA_seas_fit_forecast)
 
 write.csv(SMA_seas_fit_forecast, "SMA_seas_fit_1_T1.csv")
 
 ```
 
-```{r}
+```{r SES model}
 ## Could add an exponential smoothing with ses(), arithmetic mean with meanf(), and could experiment with non-seasonal naive on the deseasoned series with naive()
 
 # Running the below on the training dataset + h gave very off values
@@ -220,6 +227,14 @@ SES_fit
 
 write.csv(SES_fit, "SES_forecast_1_T1.csv") ## DROP
 ```
+
+```{r Non-seasonal naive}
+
+#Creating non-seasonal ts 
+deseasonal_load <- seasadj(decompose_load)
+
+```
+
 
 
 ```{r ARIMA - Weilin}
@@ -261,6 +276,19 @@ print(SARIMA_forecast)
 write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv") ## This model got a public score of 22.29 -- KEEP
 
 ```
+
+```{r Fitting SARIMA to temp and humidity}
+
+plot(all_ts[,2], main = "Daily Humidity")
+humidity_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),2], seasonal=TRUE)
+summary(humidity_SARIMA)
+
+plot(all_ts[,3], main = "Daily Temperature")
+temp_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),3], seasonal = TRUE)
+summary(temp_SARIMA)
+
+```
+
 
 
 ```{r ETS + STL}
