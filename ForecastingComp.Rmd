@@ -211,6 +211,7 @@ SMA_seas_fit <- sma(y = daily_ts, h = 59,
                           holdout = FALSE) # silent = FALSE gives an error
 
 SMA_seas_fit_forecast <- forecast(object = SMA_seas_fit, h = 59)
+plot(SMA_seas_fit_forecast)
 
 SMA_seas_fit_forecast_summary <- summary(SMA_seas_fit_forecast)
 
@@ -232,6 +233,10 @@ write.csv(SES_fit, "SES_forecast_1_T1.csv") ## DROP
 
 #Creating non-seasonal ts 
 deseasonal_load <- seasadj(decompose_load)
+
+# Naive on deseasonal load data
+NAIVE_deseas_load <- naive(deseasonal_load, h = 59)
+plot(NAIVE_deseas_load)
 
 ```
 
@@ -288,7 +293,6 @@ temp_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),3], seasonal = TRUE)
 summary(temp_SARIMA)
 
 ```
-
 
 
 ```{r ETS + STL}
