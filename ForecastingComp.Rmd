@@ -145,8 +145,10 @@ autoplot(daily_ts) + ggtitle("Daily Load Time Series")
 ```{r Decompose the series}
 
 # Gaby added in case we need
-decompose_load <- decompose(daily_ts, "multiplicative")
-plot(decompose_load)
+# Since we have multiple seasonality, we need to use mstl() for decomposition
+decompose_load <- mstl(daily_ts)
+autoplot(decompose_load)
+# Pretty cool!
 
 ```
 
@@ -206,6 +208,8 @@ write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
 SMA_seas_fit_train <- sma(y = daily_ts_train, h = 59, 
                           holdout = FALSE) # silent = FALSE gives an error
 summary(SMA_seas_fit_train)
+autoplot(SMA_seas_fit_train)+
+  autolayer(daily_ts_test)
 
 SMA_seas_fit <- sma(y = daily_ts, h = 59, 
                           holdout = FALSE) # silent = FALSE gives an error
@@ -223,8 +227,13 @@ write.csv(SMA_seas_fit_forecast, "SMA_seas_fit_1_T1.csv")
 ## Could add an exponential smoothing with ses(), arithmetic mean with meanf(), and could experiment with non-seasonal naive on the deseasoned series with naive()
 
 # Running the below on the training dataset + h gave very off values
-SES_fit <- ses(daily_ts, h=59)
-SES_fit
+SES_fit_train <- ses(daily_ts_train, h=59)
+summary(SES_fit_train)
+autoplot(SES_fit_train)+
+  autolayer(daily_ts_test) # not a great model!
+
+SES_forecast <- ses(daily_ts, h=59)
+plot(SES_forecast)
 
 write.csv(SES_fit, "SES_forecast_1_T1.csv") ## DROP
 ```
@@ -242,14 +251,16 @@ plot(NAIVE_deseas_load)
 
 
 
-```{r ARIMA - Weilin}
+```{r ARIMA on deseasoned}
 # Hi Weilin! Since we have a SARIMA, I'm going to run this ARIMA with seasonal = FALSE because otherwise we try the same thing twice. We can use the nonseasonal ARIMA on deseasoned and then add in a model of just the seasonal component and see how it works.
 
-arima_model <- auto.arima(decompose_load, seasonal = FALSE)
-arima_model
+arima_deseas_load <- auto.arima(deseasonal_load, seasonal = FALSE)
+arima_model_deseas_load
 
-arima_forecast <- forecast(arima_model, h = 59)
-arima_forecast
+arima_deaseas_load_forecast <- forecast(arima_deseas_load, seasonal = FALSE)
+plot(arima_deaseas_load_forecast)
+
+autoplot(arima_deaseas_load_forecast) +
 
 ```
 
