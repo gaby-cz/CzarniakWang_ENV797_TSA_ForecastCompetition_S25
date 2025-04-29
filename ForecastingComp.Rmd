@@ -2,13 +2,17 @@
 title: "Forecasting Competition"
 subtitle: "Assignment A08"
 author: "Gaby Czarniak & Weilin Wang"
-output: pdf_document
+output: html_document
 geometry: margin=2.54cm
 editor_options: 
   chunk_output_type: console
 ---
 
-```{r Loading libraries}
+# GitHub Repository: 
+The following repository is private and Luana (lmmlima) has been invited as a collaborator: https://github.com/gaby-cz/CzarniakWang_ENV797_TSA_ForecastCompetition_S25.git 
+
+
+```{r Loading libraries, message=FALSE, warning=FALSE, include=FALSE}
 
 library(readxl)
 library(dplyr)
@@ -24,13 +28,22 @@ library(outliers)
 library(tidyverse)
 library(smooth)
 ```
+# Code for importing data set
 
-```{r Importing data}
+```{r Importing data, echo=TRUE, message=FALSE, warning=FALSE}
 
 # Importing time series data from Excel files
 load_data <- read_excel("datasets/load.xlsx")
 humidity_data <- read_excel("datasets/relative_humidity.xlsx")
 temperature_data <- read_excel("datasets/temperature.xlsx")
+
+```
+
+# Code used to wrangle the data set
+
+## Inspecting the data
+
+```{r Inspect data}
 
 # Inspecting the data
 head(load_data)
@@ -39,9 +52,9 @@ head(temperature_data)
 
 ```
 
-```{r Handling missing values}
+## Addressing missing values 
 
-# Gaby added
+```{r Handling missing values}
 
 summary(load_data)
 # We have 6 NAs in h2
@@ -72,6 +85,8 @@ NAcheck
 
 ```
 
+## Creating individual and joint data frames
+
 ```{r Process the data}
 
 # Take the mean load from h1 through h24 for each day
@@ -97,9 +112,11 @@ daily_data <- load_daily %>%
 
 ```
 
-```{r Inspect summary statistics for load, humidity, and temperature}
+### Summary statistics were inspected to assess need for log-transformations before calculating correlations. See .rmd for this code.
 
-# Gaby added
+
+```{r Inspect summary statistics for load, eval=FALSE, include=FALSE}
+
 head(daily_data)
 
 summary(daily_data$Daily_Load)
@@ -112,9 +129,10 @@ summary(daily_data$Daily_Temperature)
 
 ```
 
+## Inspecting correlation among variables
+
 ```{r Inspect correlation among variables}
 
-# Gaby added
 # Create one ts object for all columns
 all_ts <- msts(daily_data[,2:4], 
              seasonal.periods = c(7, 365), 
@@ -129,6 +147,8 @@ print(R)
 
 ```
 
+# Creating a time series object using multiple seasonality
+
 ```{r Creating a load-only ts object}
 # Creating our first ts object
 # Using msts because our daily data has more than one seasonal component
@@ -142,9 +162,10 @@ autoplot(daily_ts) + ggtitle("Daily Load Time Series")
 
 ```
 
+## Decomposing the load series
+
 ```{r Decompose the series}
 
-# Gaby added in case we need
 # Since we have multiple seasonality, we need to use mstl() for decomposition
 decompose_load <- mstl(daily_ts)
 autoplot(decompose_load)
@@ -152,9 +173,10 @@ autoplot(decompose_load)
 
 ```
 
+## Creating subsets for training, testing, and forecasting purposes
+
 ```{r Create subsets for training and testing purposes}
 
-# Gaby added
 # Subset for training
 # For model training, use data from January 1, 2005, to December 31, 2009.
 n_for = 365
@@ -172,97 +194,8 @@ autoplot(daily_ts_test) + ggtitle("Testing subset")
 
 ```
 
-```{r Arithmetic mean on original data}
 
-# Gaby added
-# Train on January 1, 2005, to December 31, 2009.
-MEAN_seas_load_train <- meanf(y = daily_ts_train, h = 59)
-plot(MEAN_seas_load_train)
-
-# After selecting the best-performing model(s), re-train the model using the full dataset from January 1, 2005, to December 31, 2010. Use this updated model to generate forecasts for January 1, 2011, to February 28, 2011. The final forecasts will be submitted as part of the competition.
-MEAN_seas_load_forecast <- meanf(y = daily_ts, h = 59)
-plot(MEAN_seas_load_forecast)
-
-```
-
-```{r Seasonal naive on original data}
-
-# Gaby added
-# Seasonal naive on original data
-
-SNAIVE_seas_train <- snaive(daily_ts_train, h=59)
-plot(SNAIVE_seas_train)
-
-SNAIVE_seas_forecast <- snaive(daily_ts, h=59)
-plot(SNAIVE_seas_forecast)
-
-write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
-
-```
-
-```{r Simple moving average on original data}
-
-# Gaby added
-# Simple moving average on original data
-
-SMA_seas_fit_train <- sma(y = daily_ts_train, h = 59, 
-                          holdout = FALSE) # silent = FALSE gives an error
-summary(SMA_seas_fit_train)
-autoplot(SMA_seas_fit_train)+
-  autolayer(daily_ts_test)
-
-SMA_seas_fit <- sma(y = daily_ts, h = 59, 
-                          holdout = FALSE) # silent = FALSE gives an error
-
-SMA_seas_fit_forecast <- forecast(object = SMA_seas_fit, h = 59)
-plot(SMA_seas_fit_forecast)
-
-SMA_seas_fit_forecast_summary <- summary(SMA_seas_fit_forecast)
-
-write.csv(SMA_seas_fit_forecast, "SMA_seas_fit_1_T1.csv")
-
-```
-
-```{r SES model}
-## Could add an exponential smoothing with ses(), arithmetic mean with meanf(), and could experiment with non-seasonal naive on the deseasoned series with naive()
-
-# Running the below on the training dataset + h gave very off values
-SES_fit_train <- ses(daily_ts_train, h=59)
-summary(SES_fit_train)
-autoplot(SES_fit_train)+
-  autolayer(daily_ts_test) # not a great model!
-
-SES_forecast <- ses(daily_ts, h=59)
-plot(SES_forecast)
-
-write.csv(SES_fit, "SES_forecast_1_T1.csv") ## DROP
-```
-
-```{r Non-seasonal naive}
-
-#Creating non-seasonal ts 
-deseasonal_load <- seasadj(decompose_load)
-
-# Naive on deseasonal load data
-NAIVE_deseas_load <- naive(deseasonal_load, h = 59)
-plot(NAIVE_deseas_load)
-
-```
-
-
-
-```{r ARIMA on deseasoned}
-# Hi Weilin! Since we have a SARIMA, I'm going to run this ARIMA with seasonal = FALSE because otherwise we try the same thing twice. We can use the nonseasonal ARIMA on deseasoned and then add in a model of just the seasonal component and see how it works.
-
-arima_deseas_load <- auto.arima(deseasonal_load, seasonal = FALSE)
-arima_model_deseas_load
-
-arima_deaseas_load_forecast <- forecast(arima_deseas_load, seasonal = FALSE)
-plot(arima_deaseas_load_forecast)
-
-autoplot(arima_deaseas_load_forecast) +
-
-```
+# Model 1: Our top-performing model on Kaggle
 
 ```{r SARIMA autofit for load only}
 
@@ -289,64 +222,25 @@ plot_grid(
 SARIMA_forecast <- forecast(SARIMA_autofit, h = 59)
 print(SARIMA_forecast)
 
-write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv") ## This model got a public score of 22.29 -- KEEP
+```
+
+```{r Write SARIMA to csv, eval=FALSE, include=FALSE}
+
+write.csv(SARIMA_forecast, "SARIMA_forecast_1_T1.csv") 
+# This model got a public score of 22.29 -- KEEP
 
 ```
 
-```{r Fitting SARIMA to temp and humidity}
+# Model 2: ARIMA with Fourier terms c(2,2)
 
-plot(all_ts[,2], main = "Daily Humidity")
-humidity_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),2], seasonal=TRUE)
-summary(humidity_SARIMA)
+```{r ARIMA with Fourier terms 22}
 
-plot(all_ts[,3], main = "Daily Temperature")
-temp_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),3], seasonal = TRUE)
-summary(temp_SARIMA)
-
-```
-
-
-```{r ETS + STL}
-
-## Hi Weilin! I think this ETS needed to be applied to the deseasoned series. That's why it's performing so poorly I think. Then, we add the seasonal component forecast back in to get the final forecast. I am going to go ahead and make those changes.
-
-# Fit and forecast STL + ETS model to data -- Gaby added
-ETS_fit <- stlf(daily_ts_train, h = 59)
-
-# Plot forecasting results -- Gaby added
-autoplot(ETS_fit) + ylab("Load")
-
-# Plot model + observed data -- Gaby added
-autoplot(daily_ts) +
-  autolayer(ETS_fit, series = "STL + ETS", PI = FALSE) +
-  ylab("Load")
-
-write.csv(ETS_fit, "ETSSTL_forecast_1_T1.csv") ## This model got a public score of 37.72 -- DROP
-
-# ------------------------------
-
-ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
-ets_forecast <- forecast(ets_model, h = 59)
-
-write.csv(ets_forecast, "ETS_forecast_1_T1.csv") ## This model got a public score of 83.96 -- DROP
-
-```
-
-```{r TBATS}
-
-tbats_model <- tbats(daily_ts[1:(5 * 365)])
-tbats_forecast <- forecast(tbats_model, h = 59)
-
-```
-
-```{r ARIMA with Fourier terms}
-# Weilin_add
 # Fourier terms as exogenous regressors
 # Fourier terms are ideal for complex seasonalities, like in the load data (both daily and hourly variation)
 # P, D, and Q are 0 because seasonality will be expressed in the Fourier terms
 
 # First, store the Fourier terms K values consistently
-K_values <- c(2, 4)  # Using the same values you tried
+K_values <- c(2, 2) 
 
 # Fit the model with these K values
 ARIMA_Four_fit <- auto.arima(daily_ts_train,
@@ -363,8 +257,163 @@ ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
                               h = 59)  # 59 days
 ```
 
+# Model 3: ARIMA with Fourier terms c(2,4)
 
-```{r}
+```{r Fourier 24}
+# First, store the Fourier terms K values consistently
+K_values <- c(2, 2) 
+
+# Fit the model with these K values
+ARIMA_Four_fit <- auto.arima(daily_ts_train,
+                           seasonal = FALSE,
+                           lambda = 0,
+                           xreg = fourier(daily_ts_train, K = K-values))
+
+# Create Fourier terms for forecasting with the same K values
+fourier_terms <- fourier(daily_ts_train, K = K_values, h = 59)
+
+# Generate forecast using the model
+ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
+                              xreg = fourier_terms,
+                              h = 59)  # 59 days
+
+```
+
+# Model 4: ETS + STL
+
+```{r ETS + STL}
+
+## ETS needs to be applied to the deseasoned series. Then, we add the seasonal component forecast back in to get the final forecast. 
+
+# Fit and forecast STL + ETS model to data -- Gaby added
+ETS_fit <- stlf(daily_ts_train, h = 59)
+
+# Plot forecasting results -- Gaby added
+autoplot(ETS_fit) + ylab("Load")
+
+# Plot model + observed data -- Gaby added
+autoplot(daily_ts) +
+  autolayer(ETS_fit, series = "STL + ETS", PI = FALSE) +
+  ylab("Load")
+
+```
+
+```{r Save ETS STL updated, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+write.csv(ETS_fit, "ETSSTL_forecast_1_T1.csv") 
+
+# This model got a private score of 29.8
+```
+
+# Model 5: ARIMA with Fourier terms c(2,12)
+
+```{r Fourier 212}
+# First, store the Fourier terms K values consistently
+K_values <- c(2, 12) 
+
+# Fit the model with these K values
+ARIMA_Four_fit <- auto.arima(daily_ts_train,
+                           seasonal = FALSE,
+                           lambda = 0,
+                           xreg = fourier(daily_ts_train, K = K-values))
+
+# Create Fourier terms for forecasting with the same K values
+fourier_terms <- fourier(daily_ts_train, K = K_values, h = 59)
+
+# Generate forecast using the model
+ARIMA_Four_forecast <- forecast(ARIMA_Four_fit,
+                              xreg = fourier_terms,
+                              h = 59)  # 59 days
+
+```
+
+
+The five models submitted that performed best among this group were, in order from best to worst: SARIMA, ARIMA with Fourier terms c(2,2), ARIMA with Fourier terms c(2,4), ETS + STL, and ARIMA with Fourier terms c(2,12). In deciding which models to include, performance was judged based on Kaggle Private Score. Had Public Score been utilized, the seasonal naive on the original data would have bumped ETS + STL to fifth place and ARIMA with Fourier terms c(2,12) would have fallen off the list of best five performing models.
+
+
+## See .rmd file for other files attempted.
+
+
+```{r Arithmetic mean on original data, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Gaby added
+# Train on January 1, 2005, to December 31, 2009.
+MEAN_seas_load_train <- meanf(y = daily_ts_train, h = 59)
+plot(MEAN_seas_load_train)
+
+# After selecting the best-performing model(s), re-train the model using the full dataset from January 1, 2005, to December 31, 2010. Use this updated model to generate forecasts for January 1, 2011, to February 28, 2011. The final forecasts will be submitted as part of the competition.
+MEAN_seas_load_forecast <- meanf(y = daily_ts, h = 59)
+plot(MEAN_seas_load_forecast)
+
+```
+
+```{r Seasonal naive on original data, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Gaby added
+# Seasonal naive on original data
+
+SNAIVE_seas_train <- snaive(daily_ts_train, h=59)
+plot(SNAIVE_seas_train)
+
+SNAIVE_seas_forecast <- snaive(daily_ts, h=59)
+plot(SNAIVE_seas_forecast)
+
+write.csv(SNAIVE_seas_forecast, "forecast1_T1.csv")
+
+```
+
+```{r Simple moving average on original data, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Gaby added
+# Simple moving average on original data
+
+SMA_seas_fit_train <- sma(y = daily_ts_train, h = 59, 
+                          holdout = FALSE) # silent = FALSE gives an error
+summary(SMA_seas_fit_train)
+
+SMA_seas_forecast_train <- forecast(object = SMA_seas_fit_train, h = 59)
+plot(SMA_seas_forecast_train)
+
+SMA_seas_fit <- sma(y = daily_ts, h = 59, 
+                          holdout = FALSE) # silent = FALSE gives an error
+
+SMA_seas_fit_forecast <- forecast(object = SMA_seas_fit, h = 59)
+plot(SMA_seas_fit_forecast)
+
+SMA_seas_fit_forecast_summary <- summary(SMA_seas_fit_forecast)
+
+write.csv(SMA_seas_fit_forecast, "SMA_seas_fit_1_T1.csv")
+
+```
+
+```{r SES model, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+## Could add an exponential smoothing with ses(), arithmetic mean with meanf(), and could experiment with non-seasonal naive on the deseasoned series with naive()
+
+# Running the below on the training dataset + h gave very off values
+SES_fit_train <- ses(daily_ts_train, h=59)
+summary(SES_fit_train)
+autoplot(SES_fit_train)+
+  autolayer(daily_ts_test) # not a great model!
+
+SES_forecast <- ses(daily_ts, h=59)
+plot(SES_forecast)
+
+write.csv(SES_fit, "SES_forecast_1_T1.csv") ## DROP
+```
+
+```{r Non-seasonal naive, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+#Creating non-seasonal ts 
+deseasonal_load <- seasadj(decompose_load)
+
+# Naive on deseasonal load data
+NAIVE_deseas_load <- naive(deseasonal_load, h = 59)
+plot(NAIVE_deseas_load)
+
+```
+
+
+```{r Performance metrics for our own trial and error, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 #Weilin add
 # 1. Calculate MAPE for all models on the validation period
 actual <- daily_ts[(5 * 365 + 1):(5 * 365 + 59)]
@@ -396,5 +445,47 @@ submission_df <- data.frame(
 )
 
 write.csv(submission_df, "final_submission.csv", row.names = FALSE)
+
+```
+
+```{r Fitting SARIMA to temp and humidity, eval=FALSE, include=FALSE}
+
+plot(all_ts[,2], main = "Daily Humidity")
+humidity_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),2], seasonal=TRUE)
+summary(humidity_SARIMA)
+
+plot(all_ts[,3], main = "Daily Temperature")
+temp_SARIMA <- auto.arima(all_ts[(1:(5 * 365)),3], seasonal = TRUE)
+summary(temp_SARIMA)
+
+```
+
+```{r ARIMA on deseasoned, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Hi Weilin! Since we have a SARIMA, I'm going to run this ARIMA with seasonal = FALSE because otherwise we try the same thing twice. We can use the nonseasonal ARIMA on deseasoned and then add in a model of just the seasonal component and see how it works.
+
+arima_deseas_load <- auto.arima(deseasonal_load, seasonal = FALSE)
+arima_model_deseas_load
+
+arima_deaseas_load_forecast <- forecast(arima_deseas_load, seasonal = FALSE)
+plot(arima_deaseas_load_forecast)
+
+```
+
+```{r ETS STL attempt dropped, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# ------------------------------
+
+ets_model <- ets(daily_ts[1:(5 * 365)])  # Training on first 5 years
+ets_forecast <- forecast(ets_model, h = 59)
+
+write.csv(ets_forecast, "ETS_forecast_1_T1.csv") ## This model got a public score of 83.96 -- DROP
+
+```
+
+```{r TBATS, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+tbats_model <- tbats(daily_ts[1:(5 * 365)])
+tbats_forecast <- forecast(tbats_model, h = 59)
 
 ```
